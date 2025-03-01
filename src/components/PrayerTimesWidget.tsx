@@ -21,7 +21,6 @@ export function PrayerTimesWidget({ zoneCode = "WLY01", compact = true }: Prayer
   const [isLoading, setIsLoading] = useState(true);
   const [currentPrayer, setCurrentPrayer] = useState<string | null>(null);
   const [nextPrayer, setNextPrayer] = useState<{ name: string; timeRemaining: number } | null>(null);
-  const [isOfflineMode, setIsOfflineMode] = useState(false);
   const { toast } = useToast();
   
   useEffect(() => {
@@ -30,7 +29,6 @@ export function PrayerTimesWidget({ zoneCode = "WLY01", compact = true }: Prayer
       try {
         const times = await getPrayerTimes(zoneCode);
         setPrayerTimes(times);
-        setIsOfflineMode(false);
         
         if (times) {
           setCurrentPrayer(getCurrentPrayer(times));
@@ -38,17 +36,16 @@ export function PrayerTimesWidget({ zoneCode = "WLY01", compact = true }: Prayer
         }
       } catch (error) {
         console.error("Error fetching prayer times:", error);
-        // Fallback to mock data with the current date
-        const mockTimes = getMockPrayerTimes(new Date());
+        // Fallback to mock data
+        const mockTimes = getMockPrayerTimes();
         setPrayerTimes(mockTimes);
         setCurrentPrayer(getCurrentPrayer(mockTimes));
         setNextPrayer(getNextPrayer(mockTimes));
-        setIsOfflineMode(true);
         
         toast({
-          title: "Using offline prayer times",
-          description: "Connected to local data. 3 months of prayer times available.",
-          variant: "default",
+          title: "Unable to fetch prayer times",
+          description: "Using cached data. Please check your connection.",
+          variant: "destructive",
         });
       } finally {
         setIsLoading(false);
@@ -86,12 +83,6 @@ export function PrayerTimesWidget({ zoneCode = "WLY01", compact = true }: Prayer
   
   return (
     <div className={`flex ${compact ? 'flex-row' : 'flex-col'} gap-2 p-4 bg-card rounded-lg shadow-sm border animate-fade-in`}>
-      {isOfflineMode && (
-        <div className="w-full mb-1">
-          <p className="text-xs text-amber-500">Offline mode - using local data</p>
-        </div>
-      )}
-      
       {currentPrayer && (
         <div className={`${compact ? 'flex-1' : 'w-full'} bg-background rounded p-2`}>
           <p className="text-xs text-muted-foreground">Current</p>
