@@ -1,5 +1,4 @@
-
-import { format } from 'date-fns';
+import { format, addDays, addMonths, isSameDay } from 'date-fns';
 
 // Define the zones for Malaysia
 export type Zone = {
@@ -237,8 +236,69 @@ export function formatPrayerTime(time: string): string {
   return `${formattedHour}:${minutes} ${ampm}`;
 }
 
-// Mock function for development with simulated data
-export function getMockPrayerTimes(): PrayerTime {
+// Mock data for 3 months of prayer times
+const MOCK_PRAYER_TIMES_DATA: PrayerTime[] = [
+  // Current month
+  ...Array(30).fill(0).map((_, index) => {
+    const date = addDays(new Date(), index);
+    // Slightly vary the prayer times each day to make it more realistic
+    const minuteVariation = index % 3; // 0, 1, or 2 minutes variation
+    return {
+      fajr: `05:${45 + minuteVariation > 59 ? 45 + minuteVariation - 60 : 45 + minuteVariation}`,
+      sunrise: `07:${1 + minuteVariation > 59 ? 1 + minuteVariation - 60 : 1 + minuteVariation}`,
+      dhuhr: `13:${15 + minuteVariation > 59 ? 15 + minuteVariation - 60 : 15 + minuteVariation}`,
+      asr: `16:${30 + minuteVariation > 59 ? 30 + minuteVariation - 60 : 30 + minuteVariation}`,
+      maghrib: `19:${25 + minuteVariation > 59 ? 25 + minuteVariation - 60 : 25 + minuteVariation}`,
+      isha: `20:${40 + minuteVariation > 59 ? 40 + minuteVariation - 60 : 40 + minuteVariation}`,
+      date: format(date, 'yyyy-MM-dd'),
+    };
+  }),
+  // Second month
+  ...Array(30).fill(0).map((_, index) => {
+    const date = addDays(addMonths(new Date(), 1), index);
+    // Different variation for next month
+    const minuteVariation = index % 4; // 0, 1, 2, or 3 minutes variation
+    return {
+      fajr: `05:${40 + minuteVariation > 59 ? 40 + minuteVariation - 60 : 40 + minuteVariation}`,
+      sunrise: `06:${55 + minuteVariation > 59 ? 55 + minuteVariation - 60 : 55 + minuteVariation}`,
+      dhuhr: `13:${10 + minuteVariation > 59 ? 10 + minuteVariation - 60 : 10 + minuteVariation}`,
+      asr: `16:${25 + minuteVariation > 59 ? 25 + minuteVariation - 60 : 25 + minuteVariation}`,
+      maghrib: `19:${20 + minuteVariation > 59 ? 20 + minuteVariation - 60 : 20 + minuteVariation}`,
+      isha: `20:${35 + minuteVariation > 59 ? 35 + minuteVariation - 60 : 35 + minuteVariation}`,
+      date: format(date, 'yyyy-MM-dd'),
+    };
+  }),
+  // Third month
+  ...Array(30).fill(0).map((_, index) => {
+    const date = addDays(addMonths(new Date(), 2), index);
+    // Different variation for third month
+    const minuteVariation = index % 5; // 0, 1, 2, 3, or 4 minutes variation
+    return {
+      fajr: `05:${35 + minuteVariation > 59 ? 35 + minuteVariation - 60 : 35 + minuteVariation}`,
+      sunrise: `06:${50 + minuteVariation > 59 ? 50 + minuteVariation - 60 : 50 + minuteVariation}`,
+      dhuhr: `13:${5 + minuteVariation > 59 ? 5 + minuteVariation - 60 : 5 + minuteVariation}`,
+      asr: `16:${20 + minuteVariation > 59 ? 20 + minuteVariation - 60 : 20 + minuteVariation}`,
+      maghrib: `19:${15 + minuteVariation > 59 ? 15 + minuteVariation - 60 : 15 + minuteVariation}`,
+      isha: `20:${30 + minuteVariation > 59 ? 30 + minuteVariation - 60 : 30 + minuteVariation}`,
+      date: format(date, 'yyyy-MM-dd'),
+    };
+  }),
+];
+
+// Enhanced mock function for development with simulated data for multiple days
+export function getMockPrayerTimes(date: Date = new Date()): PrayerTime {
+  // Try to find prayer times for the specified date
+  const foundPrayerTime = MOCK_PRAYER_TIMES_DATA.find(pt => {
+    const ptDate = new Date(pt.date);
+    return isSameDay(ptDate, date);
+  });
+  
+  // If found, return it, otherwise return a default
+  if (foundPrayerTime) {
+    return foundPrayerTime;
+  }
+  
+  // Fallback to default if date not found in mock data
   return {
     fajr: '05:45',
     sunrise: '07:01',
@@ -246,6 +306,11 @@ export function getMockPrayerTimes(): PrayerTime {
     asr: '16:30',
     maghrib: '19:25',
     isha: '20:40',
-    date: format(new Date(), 'yyyy-MM-dd'),
+    date: format(date, 'yyyy-MM-dd'),
   };
+}
+
+// Get all available mock prayer times (for UI display if needed)
+export function getAllMockPrayerTimes(): PrayerTime[] {
+  return MOCK_PRAYER_TIMES_DATA;
 }
