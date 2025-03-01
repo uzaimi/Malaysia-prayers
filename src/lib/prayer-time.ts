@@ -108,19 +108,21 @@ export async function getPrayerTimes(zone: string, date: Date = new Date()): Pro
     
     const data = await response.json();
     
-    if (data.status === 'OK' && data.prayerTime && data.prayerTime.length > 0) {
+    // Check if the response status is "OK!" (the API returns "OK!" not "OK")
+    if (data.status === "OK!" && data.prayerTime && data.prayerTime.length > 0) {
       const prayerTimeData = data.prayerTime[0];
       
       return {
         fajr: prayerTimeData.fajr,
         sunrise: prayerTimeData.syuruk,
-        dhuhr: prayerTimeData.zohor,
-        asr: prayerTimeData.asar,
+        dhuhr: prayerTimeData.dhuhr || prayerTimeData.zohor, // Handle both possible spellings
+        asr: prayerTimeData.asr,
         maghrib: prayerTimeData.maghrib,
-        isha: prayerTimeData.isyak,
+        isha: prayerTimeData.isha || prayerTimeData.isyak, // Handle both possible spellings
         date: prayerTimeData.date,
       };
     } else {
+      console.error("API Response:", data);
       throw new Error('Invalid data format received from the API');
     }
   } catch (error) {
