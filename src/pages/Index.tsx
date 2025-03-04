@@ -116,6 +116,7 @@ const Index = () => {
         
         <footer className="mt-8 text-center text-xs text-muted-foreground">
           <p>Data provided by JAKIM e-Solat</p>
+          <p className="mt-1 font-medium">code by Uzaimi</p>
         </footer>
       </div>
     </ThemeProvider>
