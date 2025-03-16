@@ -7,7 +7,7 @@ import {
   getNextPrayer, 
   formatTimeRemaining,
   getMockPrayerTimes
-} from "@/lib/prayer-time";
+} from "@/lib/prayer"; // Updated import path
 import { Loader2, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
