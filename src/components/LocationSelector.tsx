@@ -6,10 +6,10 @@ import {
   PopoverTrigger 
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { MapPinIcon, SearchIcon, ChevronDownIcon } from "lucide-react";
+import { MapPinIcon, SearchIcon, ChevronDownIcon, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { ZONES, Zone } from "@/lib/prayer-time";
-import { getCurrentLocation } from "@/lib/location";
+import { ZONES, Zone } from "@/lib/prayer"; // Updated import
+import { getCurrentLocation, getClosestPrayerZone } from "@/lib/location";
 import { toast } from "sonner";
 
 interface LocationSelectorProps {
@@ -34,11 +34,12 @@ export function LocationSelector({ selectedZone, onZoneChange }: LocationSelecto
     try {
       setIsLoading(true);
       const location = await getCurrentLocation();
-      // In a real app, you would use a proper geolocation service to map coordinates to zones
-      // For this example, we'll just pick a zone
-      const zone = ZONES.find(zone => zone.code === "WLY01") as Zone;
-      onZoneChange(zone.code);
-      toast.success(`Location detected: ${zone.name}, ${zone.state}`);
+      
+      // Find the closest prayer zone based on coordinates
+      const closestZone = await getClosestPrayerZone(location);
+      
+      onZoneChange(closestZone.code);
+      toast.success(`Location detected: ${closestZone.name}, ${closestZone.state}`);
     } catch (error) {
       console.error("Error getting location:", error);
       toast.error("Failed to detect your location. Please select manually.");
@@ -85,8 +86,17 @@ export function LocationSelector({ selectedZone, onZoneChange }: LocationSelecto
               onClick={handleAutoDetect}
               disabled={isLoading}
             >
-              <MapPinIcon className="h-4 w-4" />
-              {isLoading ? "Detecting..." : "Detect my location"}
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Detecting your location...
+                </>
+              ) : (
+                <>
+                  <MapPinIcon className="h-4 w-4" />
+                  Detect my location
+                </>
+              )}
             </Button>
           </div>
           
