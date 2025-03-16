@@ -46,15 +46,9 @@ const Index = () => {
         }
       } catch (error) {
         console.error("Error fetching prayer times:", error);
-        // Fallback to mock data for development
-        const mockTimes = getMockPrayerTimes();
-        setPrayerTimes(mockTimes);
-        setCurrentPrayer(getCurrentPrayer(mockTimes));
-        setNextPrayer(getNextPrayer(mockTimes));
-        
         toast({
           title: "Unable to fetch prayer times",
-          description: "Using cached data. Please check your connection.",
+          description: "Using local data. API may be temporarily unavailable.",
           variant: "destructive",
         });
       } finally {
