@@ -14,6 +14,7 @@ import { PrayerTimeCard } from "@/components/PrayerTimeCard";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { Loader2 } from "lucide-react";
+import { CacheManager } from "@/components/CacheManager";
 
 const Index = () => {
   const [prayerTimes, setPrayerTimes] = useState<PrayerTime | null>(null);
@@ -109,6 +110,8 @@ const Index = () => {
             <p className="text-muted-foreground">Unable to load prayer times</p>
           </div>
         )}
+        
+        <CacheManager />
         
         <footer className="mt-8 text-center text-xs text-muted-foreground">
           <p>Data provided by JAKIM e-Solat</p>

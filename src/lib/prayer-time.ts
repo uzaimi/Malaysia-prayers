@@ -1,4 +1,5 @@
 import { format, addDays, addMonths, isSameDay } from 'date-fns';
+import { getCachedPrayerTime, cachePrayerTime, getDateKey } from './prayer-time-cache';
 
 // Define the zones for Malaysia
 export type Zone = {
@@ -93,45 +94,71 @@ export const ZONES: Zone[] = [
   { code: "WLY02", name: "Labuan", state: "W.P. Labuan" }
 ];
 
-// Function to get prayer times from JAKIM e-Solat API
+// Function to get prayer times from JAKIM e-Solat API with cache fallback
 export async function getPrayerTimes(zone: string, date: Date = new Date()): Promise<PrayerTime> {
+  // Check cache first
+  const cachedData = getCachedPrayerTime(zone, date);
+  if (cachedData) {
+    console.log(`Using cached prayer times for ${zone} on ${getDateKey(date)}`);
+    return cachedData;
+  }
+  
   // Format date to YYYY-MM-DD
   const formattedDate = format(date, 'yyyy-MM-dd');
   
-  // Try to use the API directly
-  const period = isSameDay(date, new Date()) ? 'today' : 'tomorrow';
-  const url = `https://www.e-solat.gov.my/index.php?r=esolatApi/takwimsolat&period=${period}&zone=${zone}`;
-  
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: {
-      'Accept': 'application/json',
-    },
-    mode: 'cors',
-  });
-  
-  if (!response.ok) {
-    throw new Error(`Failed to fetch prayer times: ${response.status}`);
-  }
-  
-  const data = await response.json();
-  
-  // Check if the response status is "OK!" (the API returns "OK!" not "OK")
-  if (data.status === "OK!" && data.prayerTime && data.prayerTime.length > 0) {
-    const prayerTimeData = data.prayerTime[0];
+  try {
+    // Determine if we need today's or a specific date's prayer times
+    const period = isSameDay(date, new Date()) ? 'today' : 'date';
+    const dateParam = period === 'date' ? `&date=${formattedDate}` : '';
+    const url = `https://www.e-solat.gov.my/index.php?r=esolatApi/takwimsolat&period=${period}&zone=${zone}${dateParam}`;
     
-    return {
-      fajr: prayerTimeData.fajr,
-      sunrise: prayerTimeData.syuruk,
-      dhuhr: prayerTimeData.dhuhr || prayerTimeData.zohor, // Handle both possible spellings
-      asr: prayerTimeData.asr,
-      maghrib: prayerTimeData.maghrib,
-      isha: prayerTimeData.isha || prayerTimeData.isyak, // Handle both possible spellings
-      date: prayerTimeData.date,
-    };
-  } else {
-    console.error("API Response:", data);
-    throw new Error('Invalid data format received from the API');
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+      mode: 'cors',
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch prayer times: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    // Check if the response status is "OK!" (the API returns "OK!" not "OK")
+    if (data.status === "OK!" && data.prayerTime && data.prayerTime.length > 0) {
+      const prayerTimeData = data.prayerTime[0];
+      
+      const prayerTime: PrayerTime = {
+        fajr: prayerTimeData.fajr,
+        sunrise: prayerTimeData.syuruk,
+        dhuhr: prayerTimeData.dhuhr || prayerTimeData.zohor, // Handle both possible spellings
+        asr: prayerTimeData.asr,
+        maghrib: prayerTimeData.maghrib,
+        isha: prayerTimeData.isha || prayerTimeData.isyak, // Handle both possible spellings
+        date: prayerTimeData.date,
+      };
+      
+      // Cache the result for future use
+      cachePrayerTime(zone, date, prayerTime);
+      
+      return prayerTime;
+    } else {
+      console.error("API Response:", data);
+      throw new Error('Invalid data format received from the API');
+    }
+  } catch (error) {
+    console.error("API call failed, checking cache:", error);
+    
+    // Double-check cache as a fallback (in case it was updated by another process)
+    const cachedData = getCachedPrayerTime(zone, date);
+    if (cachedData) {
+      console.log(`Using cached prayer times as fallback for ${zone} on ${getDateKey(date)}`);
+      return cachedData;
+    }
+    
+    throw error;
   }
 }
 
