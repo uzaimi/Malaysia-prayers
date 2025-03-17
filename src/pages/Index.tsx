@@ -8,14 +8,12 @@ import {
   getNextPrayer, 
   formatTimeRemaining
 } from "@/lib/prayer-time";
-import { downloadAllPrayerTimesFor2025, isPrayerTimesDownloaded } from "@/lib/prayer-time-storage";
 import { Header } from "@/components/Header";
 import { LocationSelector } from "@/components/LocationSelector";
 import { PrayerTimeCard } from "@/components/PrayerTimeCard";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeProvider } from "@/contexts/ThemeContext";
-import { Loader2, Download, Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 
 const Index = () => {
   const [prayerTimes, setPrayerTimes] = useState<PrayerTime | null>(null);
@@ -23,8 +21,6 @@ const Index = () => {
   const [selectedZone, setSelectedZone] = useState("WLY01"); // Default to KL
   const [currentPrayer, setCurrentPrayer] = useState<string | null>(null);
   const [nextPrayer, setNextPrayer] = useState<{ name: string; timeRemaining: number } | null>(null);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [isDataDownloaded, setIsDataDownloaded] = useState(false);
   const { toast } = useToast();
   
   useEffect(() => {
@@ -33,9 +29,6 @@ const Index = () => {
     if (savedZone) {
       setSelectedZone(savedZone);
     }
-    
-    // Check if prayer times have been downloaded
-    setIsDataDownloaded(isPrayerTimesDownloaded());
   }, []);
   
   useEffect(() => {
@@ -54,7 +47,7 @@ const Index = () => {
         console.error("Error fetching prayer times:", error);
         toast({
           title: "Unable to fetch prayer times",
-          description: "Please check your connection and try again. You can download offline data for 2025 as a backup.",
+          description: "Please check your connection and try again.",
           variant: "destructive",
         });
         setPrayerTimes(null);
@@ -87,64 +80,12 @@ const Index = () => {
     setSelectedZone(zoneCode);
   };
   
-  const handleDownloadData = async () => {
-    setIsDownloading(true);
-    try {
-      await downloadAllPrayerTimesFor2025();
-      setIsDataDownloaded(true);
-      toast({
-        title: "Download complete",
-        description: "Prayer times for 2025 have been downloaded and will be used when the API is unavailable.",
-      });
-    } catch (error) {
-      console.error("Failed to download prayer times:", error);
-      toast({
-        title: "Download failed",
-        description: "There was an error downloading the prayer times. Please try again later.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsDownloading(false);
-    }
-  };
-  
   return (
     <ThemeProvider>
       <div className="min-h-screen flex flex-col bg-background text-foreground p-4 md:p-8 max-w-lg mx-auto">
         <Header />
         
         <LocationSelector selectedZone={selectedZone} onZoneChange={handleZoneChange} />
-        
-        <div className="mb-4">
-          <Button
-            variant={isDataDownloaded ? "outline" : "default"}
-            className="w-full flex items-center justify-center gap-2"
-            disabled={isDownloading || isDataDownloaded}
-            onClick={handleDownloadData}
-          >
-            {isDownloading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Downloading 2025 prayer times...
-              </>
-            ) : isDataDownloaded ? (
-              <>
-                <Check className="h-4 w-4" />
-                2025 prayer times downloaded
-              </>
-            ) : (
-              <>
-                <Download className="h-4 w-4" />
-                Download 2025 prayer times for offline use
-              </>
-            )}
-          </Button>
-          {isDataDownloaded && (
-            <p className="text-xs text-muted-foreground mt-1 text-center">
-              Offline data will be used when the API is unavailable
-            </p>
-          )}
-        </div>
         
         {isLoading ? (
           <div className="flex-1 flex items-center justify-center">

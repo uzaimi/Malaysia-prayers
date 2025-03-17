@@ -42,7 +42,7 @@ export function PrayerTimesWidget({ zoneCode = "WLY01", compact = true }: Prayer
         
         toast({
           title: "Unable to fetch prayer times",
-          description: "Please check your connection or download offline data.",
+          description: "Please check your connection and try again.",
           variant: "destructive",
         });
         

@@ -1,6 +1,4 @@
-
-import { format, addDays, addMonths, isSameDay, parse } from 'date-fns';
-import { getStoredPrayerTime, isPrayerTimesDownloaded } from './prayer-time-storage';
+import { format, addDays, addMonths, isSameDay } from 'date-fns';
 
 // Define the zones for Malaysia
 export type Zone = {
@@ -104,50 +102,36 @@ export async function getPrayerTimes(zone: string, date: Date = new Date()): Pro
   const period = isSameDay(date, new Date()) ? 'today' : 'tomorrow';
   const url = `https://www.e-solat.gov.my/index.php?r=esolatApi/takwimsolat&period=${period}&zone=${zone}`;
   
-  try {
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      },
-      mode: 'cors',
-    });
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/json',
+    },
+    mode: 'cors',
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch prayer times: ${response.status}`);
+  }
+  
+  const data = await response.json();
+  
+  // Check if the response status is "OK!" (the API returns "OK!" not "OK")
+  if (data.status === "OK!" && data.prayerTime && data.prayerTime.length > 0) {
+    const prayerTimeData = data.prayerTime[0];
     
-    if (!response.ok) {
-      throw new Error(`Failed to fetch prayer times: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    // Check if the response status is "OK!" (the API returns "OK!" not "OK")
-    if (data.status === "OK!" && data.prayerTime && data.prayerTime.length > 0) {
-      const prayerTimeData = data.prayerTime[0];
-      
-      return {
-        fajr: prayerTimeData.fajr,
-        sunrise: prayerTimeData.syuruk,
-        dhuhr: prayerTimeData.dhuhr || prayerTimeData.zohor, // Handle both possible spellings
-        asr: prayerTimeData.asr,
-        maghrib: prayerTimeData.maghrib,
-        isha: prayerTimeData.isha || prayerTimeData.isyak, // Handle both possible spellings
-        date: prayerTimeData.date,
-      };
-    } else {
-      throw new Error('Invalid data format received from the API');
-    }
-  } catch (error) {
-    console.error("API call failed, trying to use locally stored data...", error);
-    
-    // Try to get stored data as fallback
-    const storedPrayerTime = getStoredPrayerTime(zone, date);
-    
-    if (storedPrayerTime) {
-      console.log("Using locally stored prayer time data for", formattedDate);
-      return storedPrayerTime;
-    }
-    
-    // If no stored data available, throw the original error
-    throw error;
+    return {
+      fajr: prayerTimeData.fajr,
+      sunrise: prayerTimeData.syuruk,
+      dhuhr: prayerTimeData.dhuhr || prayerTimeData.zohor, // Handle both possible spellings
+      asr: prayerTimeData.asr,
+      maghrib: prayerTimeData.maghrib,
+      isha: prayerTimeData.isha || prayerTimeData.isyak, // Handle both possible spellings
+      date: prayerTimeData.date,
+    };
+  } else {
+    console.error("API Response:", data);
+    throw new Error('Invalid data format received from the API');
   }
 }
 
