@@ -8,7 +8,7 @@ import {
   getNextPrayer, 
   formatTimeRemaining,
   getMockPrayerTimes
-} from "@/lib/prayer"; // Updated import path
+} from "@/lib/prayer-time";
 import { Header } from "@/components/Header";
 import { LocationSelector } from "@/components/LocationSelector";
 import { PrayerTimeCard } from "@/components/PrayerTimeCard";
