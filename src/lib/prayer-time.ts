@@ -96,18 +96,22 @@ export const ZONES: Zone[] = [
 // Function to get prayer times from JAKIM e-Solat API
 export async function getPrayerTimes(zone: string, date: Date = new Date()): Promise<PrayerTime> {
   try {
-    // First try to get data from our cache
-    const cachedData = getCachedPrayerTimes(zone);
+    // Format date to YYYY-MM-DD
+    const formattedDate = format(date, 'yyyy-MM-dd');
+    
+    // First try to get data from our cache with the specific date
+    const cachedData = getCachedPrayerTimes(zone, formattedDate);
     if (cachedData) {
-      console.log("Using cached prayer times data");
+      console.log("Using cached prayer times data for", formattedDate);
       return cachedData;
     }
     
-    const formattedDate = format(date, 'yyyy-MM-dd');
-    
     // Try to use the API directly first
     try {
-      const url = `https://www.e-solat.gov.my/index.php?r=esolatApi/takwimsolat&period=today&zone=${zone}`;
+      // Note: The JAKIM API only accepts 'today', 'tomorrow', 'week', 'month', not specific dates
+      // So we'll use 'today' and then check if the returned date matches our requested date
+      const period = isSameDay(date, new Date()) ? 'today' : 'tomorrow';
+      const url = `https://www.e-solat.gov.my/index.php?r=esolatApi/takwimsolat&period=${period}&zone=${zone}`;
       
       const response = await fetch(url, {
         method: 'GET',
@@ -137,8 +141,8 @@ export async function getPrayerTimes(zone: string, date: Date = new Date()): Pro
           date: prayerTimeData.date,
         };
         
-        // Cache the data locally
-        cachePrayerTimes(zone, result);
+        // Cache the data locally with the date key
+        cachePrayerTimes(zone, result, formattedDate);
         
         return result;
       } else {
@@ -148,37 +152,35 @@ export async function getPrayerTimes(zone: string, date: Date = new Date()): Pro
     } catch (directApiError) {
       console.warn("Direct API request failed, using fallback methods:", directApiError);
       
-      // Generate mock data based on zone to simulate different prayer times
-      const mockData = getMockPrayerTimes(zone);
+      // Generate mock data based on zone and date to simulate different prayer times
+      const mockData = getMockPrayerTimes(zone, date);
       
-      // Cache the mock data
-      cachePrayerTimes(zone, mockData);
+      // Cache the mock data with the date key
+      cachePrayerTimes(zone, mockData, formattedDate);
       
       return mockData;
     }
   } catch (error) {
     console.error('Error fetching prayer times:', error);
     
-    // Ultimate fallback - return mock data for the requested zone
-    return getMockPrayerTimes(zone);
+    // Ultimate fallback - return mock data for the requested zone and date
+    return getMockPrayerTimes(zone, date);
   }
 }
 
 // Cache functions to store and retrieve prayer times locally
-function cachePrayerTimes(zone: string, data: PrayerTime): void {
+function cachePrayerTimes(zone: string, data: PrayerTime, dateKey: string): void {
   try {
-    const today = format(new Date(), 'yyyy-MM-dd');
-    const cacheKey = `prayer_times_${zone}_${today}`;
+    const cacheKey = `prayer_times_${zone}_${dateKey}`;
     localStorage.setItem(cacheKey, JSON.stringify(data));
   } catch (error) {
     console.error('Error caching prayer times:', error);
   }
 }
 
-function getCachedPrayerTimes(zone: string): PrayerTime | null {
+function getCachedPrayerTimes(zone: string, dateKey: string): PrayerTime | null {
   try {
-    const today = format(new Date(), 'yyyy-MM-dd');
-    const cacheKey = `prayer_times_${zone}_${today}`;
+    const cacheKey = `prayer_times_${zone}_${dateKey}`;
     const cachedData = localStorage.getItem(cacheKey);
     
     if (cachedData) {
@@ -297,8 +299,8 @@ export function formatPrayerTime(time: string): string {
   return `${formattedHour}:${minutes} ${ampm}`;
 }
 
-// Simple mock function for development - more sophisticated version with zone-based variations
-export function getMockPrayerTimes(zone: string = "WLY01"): PrayerTime {
+// Simple mock function for development - now includes date parameter
+export function getMockPrayerTimes(zone: string = "WLY01", date: Date = new Date()): PrayerTime {
   // Base times that we'll adjust slightly based on zone to simulate regional differences
   const baseTimes = {
     fajr: '05:45',
@@ -310,11 +312,14 @@ export function getMockPrayerTimes(zone: string = "WLY01"): PrayerTime {
   };
   
   // Add some slight variations based on the zone code to simulate different regions
-  // This is just for simulation - real prayer times vary much more based on location
   const zoneDigits = zone.replace(/\D/g, '');
   const zoneOffset = parseInt(zoneDigits, 10) % 5; // Get a number between 0-4
   
-  // Adjust minutes by zone for more realistic regional variations
+  // Also vary times slightly based on date (month affects prayer times)
+  const month = date.getMonth();
+  const monthOffset = month % 4 - 2; // Values between -2 and 1
+  
+  // Adjust minutes by zone and month for more realistic variations
   const adjustTime = (time: string, minutesOffset: number): string => {
     const [hours, minutes] = time.split(':').map(Number);
     let newMinutes = minutes + minutesOffset;
@@ -335,12 +340,12 @@ export function getMockPrayerTimes(zone: string = "WLY01"): PrayerTime {
   };
   
   return {
-    fajr: adjustTime(baseTimes.fajr, zoneOffset - 2),
-    sunrise: adjustTime(baseTimes.sunrise, zoneOffset - 1),
-    dhuhr: adjustTime(baseTimes.dhuhr, zoneOffset),
-    asr: adjustTime(baseTimes.asr, zoneOffset + 1),
-    maghrib: adjustTime(baseTimes.maghrib, zoneOffset + 2),
-    isha: adjustTime(baseTimes.isha, zoneOffset + 3),
-    date: format(new Date(), 'yyyy-MM-dd'),
+    fajr: adjustTime(baseTimes.fajr, zoneOffset - 2 + monthOffset),
+    sunrise: adjustTime(baseTimes.sunrise, zoneOffset - 1 + monthOffset),
+    dhuhr: adjustTime(baseTimes.dhuhr, zoneOffset + monthOffset),
+    asr: adjustTime(baseTimes.asr, zoneOffset + 1 + monthOffset),
+    maghrib: adjustTime(baseTimes.maghrib, zoneOffset + 2 + monthOffset),
+    isha: adjustTime(baseTimes.isha, zoneOffset + 3 + monthOffset),
+    date: format(date, 'yyyy-MM-dd'),
   };
 }
