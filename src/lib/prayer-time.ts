@@ -95,101 +95,43 @@ export const ZONES: Zone[] = [
 
 // Function to get prayer times from JAKIM e-Solat API
 export async function getPrayerTimes(zone: string, date: Date = new Date()): Promise<PrayerTime> {
-  try {
-    // Format date to YYYY-MM-DD
-    const formattedDate = format(date, 'yyyy-MM-dd');
-    
-    // First try to get data from our cache with the specific date
-    const cachedData = getCachedPrayerTimes(zone, formattedDate);
-    if (cachedData) {
-      console.log("Using cached prayer times data for", formattedDate);
-      return cachedData;
-    }
-    
-    // Try to use the API directly first
-    try {
-      // Note: The JAKIM API only accepts 'today', 'tomorrow', 'week', 'month', not specific dates
-      // So we'll use 'today' and then check if the returned date matches our requested date
-      const period = isSameDay(date, new Date()) ? 'today' : 'tomorrow';
-      const url = `https://www.e-solat.gov.my/index.php?r=esolatApi/takwimsolat&period=${period}&zone=${zone}`;
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
-        mode: 'cors',
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch prayer times: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      // Check if the response status is "OK!" (the API returns "OK!" not "OK")
-      if (data.status === "OK!" && data.prayerTime && data.prayerTime.length > 0) {
-        const prayerTimeData = data.prayerTime[0];
-        
-        const result = {
-          fajr: prayerTimeData.fajr,
-          sunrise: prayerTimeData.syuruk,
-          dhuhr: prayerTimeData.dhuhr || prayerTimeData.zohor, // Handle both possible spellings
-          asr: prayerTimeData.asr,
-          maghrib: prayerTimeData.maghrib,
-          isha: prayerTimeData.isha || prayerTimeData.isyak, // Handle both possible spellings
-          date: prayerTimeData.date,
-        };
-        
-        // Cache the data locally with the date key
-        cachePrayerTimes(zone, result, formattedDate);
-        
-        return result;
-      } else {
-        console.error("API Response:", data);
-        throw new Error('Invalid data format received from the API');
-      }
-    } catch (directApiError) {
-      console.warn("Direct API request failed, using fallback methods:", directApiError);
-      
-      // Generate mock data based on zone and date to simulate different prayer times
-      const mockData = getMockPrayerTimes(zone, date);
-      
-      // Cache the mock data with the date key
-      cachePrayerTimes(zone, mockData, formattedDate);
-      
-      return mockData;
-    }
-  } catch (error) {
-    console.error('Error fetching prayer times:', error);
-    
-    // Ultimate fallback - return mock data for the requested zone and date
-    return getMockPrayerTimes(zone, date);
+  // Format date to YYYY-MM-DD
+  const formattedDate = format(date, 'yyyy-MM-dd');
+  
+  // Try to use the API directly
+  const period = isSameDay(date, new Date()) ? 'today' : 'tomorrow';
+  const url = `https://www.e-solat.gov.my/index.php?r=esolatApi/takwimsolat&period=${period}&zone=${zone}`;
+  
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/json',
+    },
+    mode: 'cors',
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch prayer times: ${response.status}`);
   }
-}
-
-// Cache functions to store and retrieve prayer times locally
-function cachePrayerTimes(zone: string, data: PrayerTime, dateKey: string): void {
-  try {
-    const cacheKey = `prayer_times_${zone}_${dateKey}`;
-    localStorage.setItem(cacheKey, JSON.stringify(data));
-  } catch (error) {
-    console.error('Error caching prayer times:', error);
-  }
-}
-
-function getCachedPrayerTimes(zone: string, dateKey: string): PrayerTime | null {
-  try {
-    const cacheKey = `prayer_times_${zone}_${dateKey}`;
-    const cachedData = localStorage.getItem(cacheKey);
+  
+  const data = await response.json();
+  
+  // Check if the response status is "OK!" (the API returns "OK!" not "OK")
+  if (data.status === "OK!" && data.prayerTime && data.prayerTime.length > 0) {
+    const prayerTimeData = data.prayerTime[0];
     
-    if (cachedData) {
-      return JSON.parse(cachedData);
-    }
-    return null;
-  } catch (error) {
-    console.error('Error retrieving cached prayer times:', error);
-    return null;
+    return {
+      fajr: prayerTimeData.fajr,
+      sunrise: prayerTimeData.syuruk,
+      dhuhr: prayerTimeData.dhuhr || prayerTimeData.zohor, // Handle both possible spellings
+      asr: prayerTimeData.asr,
+      maghrib: prayerTimeData.maghrib,
+      isha: prayerTimeData.isha || prayerTimeData.isyak, // Handle both possible spellings
+      date: prayerTimeData.date,
+    };
+  } else {
+    console.error("API Response:", data);
+    throw new Error('Invalid data format received from the API');
   }
 }
 
@@ -297,55 +239,4 @@ export function formatPrayerTime(time: string): string {
   const ampm = hour >= 12 ? 'PM' : 'AM';
   const formattedHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
   return `${formattedHour}:${minutes} ${ampm}`;
-}
-
-// Simple mock function for development - now includes date parameter
-export function getMockPrayerTimes(zone: string = "WLY01", date: Date = new Date()): PrayerTime {
-  // Base times that we'll adjust slightly based on zone to simulate regional differences
-  const baseTimes = {
-    fajr: '05:45',
-    sunrise: '07:01',
-    dhuhr: '13:15',
-    asr: '16:30',
-    maghrib: '19:25',
-    isha: '20:40',
-  };
-  
-  // Add some slight variations based on the zone code to simulate different regions
-  const zoneDigits = zone.replace(/\D/g, '');
-  const zoneOffset = parseInt(zoneDigits, 10) % 5; // Get a number between 0-4
-  
-  // Also vary times slightly based on date (month affects prayer times)
-  const month = date.getMonth();
-  const monthOffset = month % 4 - 2; // Values between -2 and 1
-  
-  // Adjust minutes by zone and month for more realistic variations
-  const adjustTime = (time: string, minutesOffset: number): string => {
-    const [hours, minutes] = time.split(':').map(Number);
-    let newMinutes = minutes + minutesOffset;
-    let newHours = hours;
-    
-    if (newMinutes >= 60) {
-      newMinutes -= 60;
-      newHours += 1;
-    } else if (newMinutes < 0) {
-      newMinutes += 60;
-      newHours -= 1;
-    }
-    
-    if (newHours >= 24) newHours -= 24;
-    if (newHours < 0) newHours += 24;
-    
-    return `${String(newHours).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`;
-  };
-  
-  return {
-    fajr: adjustTime(baseTimes.fajr, zoneOffset - 2 + monthOffset),
-    sunrise: adjustTime(baseTimes.sunrise, zoneOffset - 1 + monthOffset),
-    dhuhr: adjustTime(baseTimes.dhuhr, zoneOffset + monthOffset),
-    asr: adjustTime(baseTimes.asr, zoneOffset + 1 + monthOffset),
-    maghrib: adjustTime(baseTimes.maghrib, zoneOffset + 2 + monthOffset),
-    isha: adjustTime(baseTimes.isha, zoneOffset + 3 + monthOffset),
-    date: format(date, 'yyyy-MM-dd'),
-  };
 }

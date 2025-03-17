@@ -6,8 +6,7 @@ import {
   PRAYER_ORDER, 
   getCurrentPrayer, 
   getNextPrayer, 
-  formatTimeRemaining,
-  getMockPrayerTimes
+  formatTimeRemaining
 } from "@/lib/prayer-time";
 import { Header } from "@/components/Header";
 import { LocationSelector } from "@/components/LocationSelector";
@@ -48,9 +47,12 @@ const Index = () => {
         console.error("Error fetching prayer times:", error);
         toast({
           title: "Unable to fetch prayer times",
-          description: "Using local data. API may be temporarily unavailable.",
+          description: "Please check your connection and try again.",
           variant: "destructive",
         });
+        setPrayerTimes(null);
+        setCurrentPrayer(null);
+        setNextPrayer(null);
       } finally {
         setIsLoading(false);
       }

@@ -1,11 +1,11 @@
+
 import React, { useEffect, useState } from "react";
 import { 
   getPrayerTimes, 
   PrayerTime, 
   getCurrentPrayer, 
   getNextPrayer, 
-  formatTimeRemaining,
-  getMockPrayerTimes
+  formatTimeRemaining
 } from "@/lib/prayer-time";
 import { Loader2, Clock, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -39,17 +39,16 @@ export function PrayerTimesWidget({ zoneCode = "WLY01", compact = true }: Prayer
         }
       } catch (error) {
         console.error("Error fetching prayer times:", error);
-        // Fallback to mock data
-        const mockTimes = getMockPrayerTimes(zoneCode);
-        setPrayerTimes(mockTimes);
-        setCurrentPrayer(getCurrentPrayer(mockTimes));
-        setNextPrayer(getNextPrayer(mockTimes));
         
         toast({
           title: "Unable to fetch prayer times",
-          description: "Using cached data. Please check your connection.",
+          description: "Please check your connection and try again.",
           variant: "destructive",
         });
+        
+        setPrayerTimes(null);
+        setCurrentPrayer(null);
+        setNextPrayer(null);
       } finally {
         setIsLoading(false);
       }
