@@ -8,7 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { MapPinIcon, SearchIcon, ChevronDownIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { ZONES, Zone } from "@/lib/prayer-time";
+import { findNearestZoneByCoordinates, ZONES } from "@/lib/prayer-time";
 import { getCurrentLocation } from "@/lib/location";
 import { toast } from "sonner";
 
@@ -34,11 +34,12 @@ export function LocationSelector({ selectedZone, onZoneChange }: LocationSelecto
     try {
       setIsLoading(true);
       const location = await getCurrentLocation();
-      // In a real app, you would use a proper geolocation service to map coordinates to zones
-      // For this example, we'll just pick a zone
-      const zone = ZONES.find(zone => zone.code === "WLY01") as Zone;
-      onZoneChange(zone.code);
-      toast.success(`Location detected: ${zone.name}, ${zone.state}`);
+      const match = findNearestZoneByCoordinates(location.latitude, location.longitude);
+      onZoneChange(match.zone.code);
+      toast.success(
+        `Location detected: ${match.zone.name}, ${match.zone.state}`,
+        { description: `Nearest JAKIM zone is about ${Math.round(match.distanceKm)} km away.` }
+      );
     } catch (error) {
       console.error("Error getting location:", error);
       toast.error("Failed to detect your location. Please select manually.");

@@ -22,7 +22,6 @@ export async function getCurrentLocation(): Promise<Coordinates> {
         });
       },
       (error) => {
-        console.error("Error getting location:", error);
         reject(error);
       },
       { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }

@@ -1,6 +1,7 @@
 
 import React, { useEffect, useState } from "react";
 import { 
+  findNearestZoneByCoordinates,
   getPrayerTimes, 
   PrayerTime, 
   PRAYER_ORDER, 
@@ -14,6 +15,7 @@ import { PrayerTimeCard } from "@/components/PrayerTimeCard";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { Loader2 } from "lucide-react";
+import { getCurrentLocation } from "@/lib/location";
 
 const Index = () => {
   const [prayerTimes, setPrayerTimes] = useState<PrayerTime | null>(null);
@@ -24,12 +26,36 @@ const Index = () => {
   const { toast } = useToast();
   
   useEffect(() => {
-    // Try to get saved zone from localStorage
+    let isMounted = true;
     const savedZone = localStorage.getItem("prayerZone");
+
     if (savedZone) {
       setSelectedZone(savedZone);
+      return;
     }
-  }, []);
+
+    const detectInitialZone = async () => {
+      try {
+        const location = await getCurrentLocation();
+        if (!isMounted) return;
+
+        const match = findNearestZoneByCoordinates(location.latitude, location.longitude);
+        setSelectedZone(match.zone.code);
+        toast({
+          title: "Location detected",
+          description: `Using ${match.zone.name}, ${match.zone.state}.`,
+        });
+      } catch (error) {
+        console.info("Automatic location detection skipped:", error);
+      }
+    };
+
+    detectInitialZone();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [toast]);
   
   useEffect(() => {
     const fetchPrayerTimes = async () => {
