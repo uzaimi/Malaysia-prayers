@@ -1,0 +1,43 @@
+name: Validate prayer times
+
+on:
+  push:
+    branches: [main, 'fix/**']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm test
+        env:
+          TZ: UTC
+      - run: npm test
+        env:
+          TZ: Asia/Kuala_Lumpur
+      - run: npm test
+        env:
+          TZ: America/New_York
+      - run: npm run typecheck
+      - run: npm run build
+      - name: Check manifest icon dimensions
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          const manifest = JSON.parse(fs.readFileSync('dist/manifest.json', 'utf8'));
+          for (const icon of manifest.icons) {
+            const png = fs.readFileSync(`dist${icon.src}`);
+            assert.equal(png.subarray(1, 4).toString(), 'PNG');
+            assert.equal(`${png.readUInt32BE(16)}x${png.readUInt32BE(20)}`, icon.sizes);
+          }
+          JS

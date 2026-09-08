@@ -1,89 +1,40 @@
 
 import React, { useEffect, useState } from "react";
-import { 
-  getPrayerTimes, 
-  PrayerTime, 
-  PRAYER_ORDER, 
-  getCurrentPrayer, 
-  getNextPrayer, 
-  formatTimeRemaining
-} from "@/lib/prayer-time";
+import { PRAYER_ORDER, formatTimeRemaining, ZONES } from "@/lib/prayer-time";
+import { usePrayerTimes } from "@/hooks/use-prayer-times";
 import { Header } from "@/components/Header";
 import { LocationSelector } from "@/components/LocationSelector";
 import { PrayerTimeCard } from "@/components/PrayerTimeCard";
 import { useToast } from "@/hooks/use-toast";
-import { ThemeProvider } from "@/contexts/ThemeContext";
 import { Loader2 } from "lucide-react";
 
 const Index = () => {
-  const [prayerTimes, setPrayerTimes] = useState<PrayerTime | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedZone, setSelectedZone] = useState("WLY01"); // Default to KL
-  const [currentPrayer, setCurrentPrayer] = useState<string | null>(null);
-  const [nextPrayer, setNextPrayer] = useState<{ name: string; timeRemaining: number } | null>(null);
-  const { toast } = useToast();
-  
-  useEffect(() => {
-    // Try to get saved zone from localStorage
+  const [selectedZone, setSelectedZone] = useState(() => {
     const savedZone = localStorage.getItem("prayerZone");
-    if (savedZone) {
-      setSelectedZone(savedZone);
-    }
-  }, []);
-  
+    return ZONES.some(zone => zone.code === savedZone) ? savedZone! : "WLY01";
+  });
+  const { prayerTimes, isLoading, error, currentPrayer, nextPrayer, now, retry } = usePrayerTimes(selectedZone);
+  const { toast } = useToast();
+
   useEffect(() => {
-    const fetchPrayerTimes = async () => {
-      setIsLoading(true);
-      try {
-        const times = await getPrayerTimes(selectedZone);
-        setPrayerTimes(times);
-        
-        // Set current and next prayers
-        if (times) {
-          setCurrentPrayer(getCurrentPrayer(times));
-          setNextPrayer(getNextPrayer(times));
-        }
-      } catch (error) {
-        console.error("Error fetching prayer times:", error);
-        toast({
-          title: "Unable to fetch prayer times",
-          description: "Please check your connection and try again.",
-          variant: "destructive",
-        });
-        setPrayerTimes(null);
-        setCurrentPrayer(null);
-        setNextPrayer(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchPrayerTimes();
-    
-    // Save selected zone to localStorage
     localStorage.setItem("prayerZone", selectedZone);
-  }, [selectedZone, toast]);
-  
-  // Update the next prayer's time remaining every minute
+  }, [selectedZone]);
+
   useEffect(() => {
-    if (!prayerTimes) return;
-    
-    const intervalId = setInterval(() => {
-      setCurrentPrayer(getCurrentPrayer(prayerTimes));
-      setNextPrayer(getNextPrayer(prayerTimes));
-    }, 60000); // Every minute
-    
-    return () => clearInterval(intervalId);
-  }, [prayerTimes]);
-  
+    if (error) toast({
+      title: "Unable to fetch prayer times",
+      description: "Please check your connection and try again.",
+      variant: "destructive",
+    });
+  }, [error, toast]);
+
   const handleZoneChange = (zoneCode: string) => {
     setSelectedZone(zoneCode);
   };
   
   return (
-    <ThemeProvider>
       <div className="min-h-screen flex flex-col bg-background text-foreground p-4 md:p-8 max-w-lg mx-auto">
-        <Header />
+        <Header date={now} />
         
         <LocationSelector selectedZone={selectedZone} onZoneChange={handleZoneChange} />
         
@@ -106,7 +57,10 @@ const Index = () => {
           </div>
         ) : (
           <div className="flex-1 flex items-center justify-center">
-            <p className="text-muted-foreground">Unable to load prayer times</p>
+            <div className="text-center">
+              <p className="text-muted-foreground">Unable to load prayer times</p>
+              <button className="mt-3 underline" onClick={retry}>Try again</button>
+            </div>
           </div>
         )}
         
@@ -115,7 +69,6 @@ const Index = () => {
           <p className="mt-1 font-medium">code by Uzaimi</p>
         </footer>
       </div>
-    </ThemeProvider>
   );
 };
 
