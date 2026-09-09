@@ -7,7 +7,7 @@ import { ZONES } from '@/lib/prayer-time';
 
 vi.mock('@/lib/location', () => ({ detectCurrentPrayerZone: vi.fn() }));
 const detect = vi.mocked(detectCurrentPrayerZone);
-beforeEach(() => detect.mockReset());
+beforeEach(() => { detect.mockReset(); });
 
 afterEach(cleanup);
 it('keeps manual zone search available without requesting location on mount', () => {
