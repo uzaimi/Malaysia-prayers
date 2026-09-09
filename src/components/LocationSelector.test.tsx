@@ -55,4 +55,6 @@ it('does not let late GPS overwrite a manual selection', async () => {
   expect(signal?.aborted).toBe(true);
   expect(onZoneChange).toHaveBeenCalledTimes(1);
   expect(onZoneChange).toHaveBeenCalledWith('JHR01');
-});
+// Radix portal/focus cleanup is slow in jsdom with the complete zone catalogue.
+}, 60000);
+
