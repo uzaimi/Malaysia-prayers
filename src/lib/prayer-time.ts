@@ -1,4 +1,26 @@
-import { format, addDays, addMonths, isSameDay } from 'date-fns';
+export const MALAYSIA_TIME_ZONE = 'Asia/Kuala_Lumpur';
+
+export function getMalaysiaDate(date: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: MALAYSIA_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(date);
+  const part = (type: string) => parts.find(p => p.type === type)!.value;
+  return `${part('year')}-${part('month')}-${part('day')}`;
+}
+
+export function formatMalaysiaDate(date: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: MALAYSIA_TIME_ZONE, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+  }).format(date);
+}
+
+function getMalaysiaMinutes(date: Date): number {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: MALAYSIA_TIME_ZONE, hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+  }).formatToParts(date);
+  return Number(parts.find(p => p.type === 'hour')!.value) * 60 +
+    Number(parts.find(p => p.type === 'minute')!.value);
+}
 
 // Define the zones for Malaysia
 export type Zone = {
@@ -94,12 +116,16 @@ export const ZONES: Zone[] = [
 ];
 
 // Function to get prayer times from JAKIM e-Solat API
-export async function getPrayerTimes(zone: string, date: Date = new Date()): Promise<PrayerTime> {
-  // Format date to YYYY-MM-DD
-  const formattedDate = format(date, 'yyyy-MM-dd');
+export async function getPrayerTimes(zone: string, date: Date = new Date(), signal?: AbortSignal): Promise<PrayerTime> {
+  const requestedDay = getMalaysiaDate(date);
+  const today = new Date();
+  const tomorrow = new Date(today.getTime() + 86400000);
+  if (requestedDay !== getMalaysiaDate(today) && requestedDay !== getMalaysiaDate(tomorrow)) {
+    throw new Error('Only today and tomorrow are supported');
+  }
   
   // Try to use the API directly
-  const period = isSameDay(date, new Date()) ? 'today' : 'tomorrow';
+  const period = requestedDay === getMalaysiaDate(today) ? 'today' : 'tomorrow';
   const url = `https://www.e-solat.gov.my/index.php?r=esolatApi/takwimsolat&period=${period}&zone=${zone}`;
   
   const response = await fetch(url, {
@@ -108,6 +134,7 @@ export async function getPrayerTimes(zone: string, date: Date = new Date()): Pro
       'Accept': 'application/json',
     },
     mode: 'cors',
+    signal,
   });
   
   if (!response.ok) {
@@ -136,9 +163,8 @@ export async function getPrayerTimes(zone: string, date: Date = new Date()): Pro
 }
 
 // Function to get the current prayer based on the time
-export function getCurrentPrayer(prayerTimes: PrayerTime): string | null {
-  const now = new Date();
-  const currentTime = now.getHours() * 60 + now.getMinutes();
+export function getCurrentPrayer(prayerTimes: PrayerTime, now: Date = new Date()): string | null {
+  const currentTime = getMalaysiaMinutes(now);
   
   const timeToMinutes = (timeStr: string): number => {
     const [hours, minutes] = timeStr.split(':').map(Number);
@@ -177,9 +203,8 @@ export function getCurrentPrayer(prayerTimes: PrayerTime): string | null {
 }
 
 // Function to find the next prayer
-export function getNextPrayer(prayerTimes: PrayerTime): { name: string; timeRemaining: number } | null {
-  const now = new Date();
-  const currentTime = now.getHours() * 60 + now.getMinutes();
+export function getNextPrayer(prayerTimes: PrayerTime, now: Date = new Date()): { name: string; timeRemaining: number } | null {
+  const currentTime = getMalaysiaMinutes(now);
   
   const timeToMinutes = (timeStr: string): number => {
     const [hours, minutes] = timeStr.split(':').map(Number);
@@ -221,16 +246,6 @@ export function formatTimeRemaining(minutes: number): string {
   } else {
     return `${mins}m`;
   }
-}
-
-// Function to find a zone by coordinates
-export async function findZoneByCoordinates(latitude: number, longitude: number): Promise<string> {
-  // This is a simplified version - in a real app, you'd use a more sophisticated
-  // algorithm to map coordinates to JAKIM zones.
-  
-  // For demo purposes, let's just return Kuala Lumpur zone as default
-  // In a real app, this would be based on actual geolocation matching
-  return "WLY01";
 }
 
 export function formatPrayerTime(time: string): string {

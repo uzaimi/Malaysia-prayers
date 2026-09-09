@@ -8,9 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { MapPinIcon, SearchIcon, ChevronDownIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { ZONES, Zone } from "@/lib/prayer-time";
-import { getCurrentLocation } from "@/lib/location";
-import { toast } from "sonner";
+import { ZONES } from "@/lib/prayer-time";
 
 interface LocationSelectorProps {
   selectedZone: string;
@@ -19,7 +17,6 @@ interface LocationSelectorProps {
 
 export function LocationSelector({ selectedZone, onZoneChange }: LocationSelectorProps) {
   const [search, setSearch] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   
   const selectedZoneData = ZONES.find(zone => zone.code === selectedZone);
   
@@ -30,22 +27,6 @@ export function LocationSelector({ selectedZone, onZoneChange }: LocationSelecto
     zone.code.toLowerCase().includes(search.toLowerCase())
   );
   
-  const handleAutoDetect = async () => {
-    try {
-      setIsLoading(true);
-      const location = await getCurrentLocation();
-      // In a real app, you would use a proper geolocation service to map coordinates to zones
-      // For this example, we'll just pick a zone
-      const zone = ZONES.find(zone => zone.code === "WLY01") as Zone;
-      onZoneChange(zone.code);
-      toast.success(`Location detected: ${zone.name}, ${zone.state}`);
-    } catch (error) {
-      console.error("Error getting location:", error);
-      toast.error("Failed to detect your location. Please select manually.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
   
   return (
     <div className="mb-6 animate-fade-in">
@@ -78,16 +59,9 @@ export function LocationSelector({ selectedZone, onZoneChange }: LocationSelecto
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full gap-2"
-              onClick={handleAutoDetect}
-              disabled={isLoading}
-            >
-              <MapPinIcon className="h-4 w-4" />
-              {isLoading ? "Detecting..." : "Detect my location"}
-            </Button>
+            <p className="text-xs text-muted-foreground">
+              Select your prayer zone by state or area.
+            </p>
           </div>
           
           <div className="max-h-[300px] overflow-y-auto">

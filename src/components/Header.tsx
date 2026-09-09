@@ -1,17 +1,16 @@
 
 import React from "react";
 import { ThemeToggle } from "./ThemeToggle";
-import { format } from "date-fns";
+import { formatMalaysiaDate } from "@/lib/prayer-time";
 
-export function Header() {
-  const today = new Date();
+export function Header({ date = new Date() }: { date?: Date }) {
   
   return (
     <header className="flex justify-between items-center mb-6 animate-fade-in">
       <div>
         <h1 className="font-semibold text-2xl">Prayer Times</h1>
         <p className="text-sm text-muted-foreground">
-          {format(today, "EEEE, d MMMM yyyy")}
+          {formatMalaysiaDate(date)}
         </p>
       </div>
       <div className="flex items-center gap-2">
