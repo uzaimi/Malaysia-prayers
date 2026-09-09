@@ -2,6 +2,30 @@
 
 ## Project info
 
+### Current location
+
+Press **Use my location** and allow your browser's location request. The app sends
+the device coordinates to [Waktu Solat's zone API](https://api.waktusolat.app/docs),
+which maps the point to a Malaysian prayer-zone polygon. It then loads that zone's
+prayer times directly from JAKIM e-Solat. Coordinates are not saved by this app;
+only the selected zone is stored locally. Waktu Solat is a third-party service.
+
+GPS requires HTTPS (or localhost for development), browser permission, and device
+location services. If embedded in another website, that site's permissions policy
+must also allow geolocation. Desktop locations may be approximate; check the
+detected area, particularly near zone boundaries. Locations with reported accuracy
+worse than 10 km are rejected. No Malaysian zone is substituted when detection fails
+or the coordinates are outside the supported polygons. Manual search remains available.
+
+The bundled zone catalog was refreshed from `https://api.waktusolat.app/zones`
+on 2026-09-10. Refresh this catalog when upstream zone definitions change.
+
+### Validation
+
+Run `npm ci`, `npm test`, `npm run typecheck`, and `npm run build`.
+The tests use simulated device coordinates and service responses. Real device
+permission prompts and GPS accuracy should also be checked on an HTTPS deployment.
+
 ## How can I edit this code?
 
 **Use your preferred IDE**

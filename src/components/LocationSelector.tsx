@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { 
   Popover,
   PopoverContent,
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { MapPinIcon, SearchIcon, ChevronDownIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ZONES } from "@/lib/prayer-time";
+import { detectCurrentPrayerZone } from "@/lib/location";
 
 interface LocationSelectorProps {
   selectedZone: string;
@@ -17,6 +18,34 @@ interface LocationSelectorProps {
 
 export function LocationSelector({ selectedZone, onZoneChange }: LocationSelectorProps) {
   const [search, setSearch] = useState("");
+  const [open, setOpen] = useState(false);
+  const [detecting, setDetecting] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const request = useRef<AbortController | null>(null);
+  useEffect(() => () => request.current?.abort(), []);
+
+  const detect = async () => {
+    request.current?.abort();
+    const controller = new AbortController();
+    request.current = controller;
+    setDetecting(true);
+    setError('');
+    setMessage('Finding your location and prayer zone...');
+    try {
+      const { zone, accuracy } = await detectCurrentPrayerZone(controller.signal);
+      if (request.current !== controller || controller.signal.aborted) return;
+      onZoneChange(zone.code);
+      setMessage(`Detected ${zone.name}, ${zone.state} (${zone.code}).${accuracy == null ? '' : ` Device accuracy: about ${Math.ceil(accuracy)} m.`} Check the area, especially near zone boundaries.`);
+      setOpen(false);
+    } catch (cause) {
+      if (request.current !== controller || controller.signal.aborted) return;
+      setMessage('');
+      setError(cause instanceof Error ? cause.message : 'Unable to detect your location. Please select manually.');
+    } finally {
+      if (request.current === controller) { request.current = null; setDetecting(false); }
+    }
+  };
   
   const selectedZoneData = ZONES.find(zone => zone.code === selectedZone);
   
@@ -30,7 +59,7 @@ export function LocationSelector({ selectedZone, onZoneChange }: LocationSelecto
   
   return (
     <div className="mb-6 animate-fade-in">
-      <Popover>
+      <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button 
             variant="outline" 
@@ -73,8 +102,14 @@ export function LocationSelector({ selectedZone, onZoneChange }: LocationSelecto
                     zone.code === selectedZone ? "bg-secondary" : ""
                   }`}
                   onClick={() => {
+                    request.current?.abort();
+                    request.current = null;
+                    setDetecting(false);
+                    setError('');
+                    setMessage('');
                     onZoneChange(zone.code);
                     setSearch("");
+                    setOpen(false);
                   }}
                 >
                   <div>
@@ -94,6 +129,15 @@ export function LocationSelector({ selectedZone, onZoneChange }: LocationSelecto
           </div>
         </PopoverContent>
       </Popover>
+      <Button className="mt-3 w-full gap-2" onClick={detect} disabled={detecting}>
+        <MapPinIcon className="h-4 w-4" />
+        {detecting ? 'Detecting location...' : 'Use my location'}
+      </Button>
+      <p className="mt-2 text-xs text-muted-foreground">
+        With your permission, coordinates are sent to Waktu Solat to find your Malaysian prayer zone. Only the selected zone is saved on this device.
+      </p>
+      {message && <p role="status" className="mt-2 text-xs text-muted-foreground">{message}</p>}
+      {error && <p role="alert" className="mt-2 text-sm text-destructive">{error}</p>}
     </div>
   );
 }
